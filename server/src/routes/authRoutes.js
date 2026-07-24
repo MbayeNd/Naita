@@ -11,6 +11,7 @@ const loginLimiter = rateLimit({
   limit: 10,
   standardHeaders: 'draft-7',
   legacyHeaders: false,
+  skip: () => process.env.NODE_ENV === 'test',
   message: { error: { message: 'Too many sign-in attempts. Try again in 15 minutes.' } },
 });
 
