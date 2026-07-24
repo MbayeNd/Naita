@@ -8,6 +8,7 @@ import { ApiError } from '../utils/ApiError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { recordAudit } from '../utils/audit.js';
 import { isExaminer } from '../middleware/authorize.js';
+import { buildResultSheet } from '../utils/resultSheet.js';
 
 const objectId = z.string().refine((v) => mongoose.isValidObjectId(v), 'Choose a valid option.');
 
@@ -77,6 +78,58 @@ export const getSession = asyncHandler(async (req, res) => {
   }
 
   res.json({ session: withTiming(session) });
+});
+export const downloadResultSheet = asyncHandler(async (req, res) => {
+  const session = await EvaluationSession.findById(req.params.id).populate(POPULATE);
+  if (!session) throw ApiError.notFound('That session no longer exists.');
+
+  if (isExaminer(req.user)) {
+    const assigned =
+      String(session.chiefExaminer._id) === String(req.user._id) ||
+      String(session.supportExaminer._id) === String(req.user._id);
+    if (!assigned) throw ApiError.forbidden('You are not assigned to this session.');
+  }
+
+  const [chiefEval, supportEval] = await Promise.all([
+    Evaluation.findOne({ session: session._id, slot: 'chief' }),
+    Evaluation.findOne({ session: session._id, slot: 'support' }),
+  ]);
+
+  const toPdfEvaluation = (evaluation, examinerUser) => {
+    if (!evaluation || evaluation.status !== 'submitted') return null;
+    return {
+      examiner: { name: examinerUser?.name },
+      total: evaluation.total,
+      generalComment: evaluation.generalComment,
+      submittedAt: evaluation.submittedAt,
+      scores: evaluation.scores,
+    };
+  };
+
+  const pdfSession = {
+    apprentice: {
+      name: session.apprentice?.name,
+      registrationNumber: session.apprentice?.registrationNumber,
+      course: session.apprentice?.course,
+      trainingCentre: session.apprentice?.trainingCentre,
+      projectTitle: session.apprentice?.projectTitle,
+    },
+    scheduledAt: session.scheduledAt,
+    completedAt: session.completedAt,
+    venue: session.venue,
+    durationMinutes: session.durationMinutes,
+    finalMark: session.finalMark,
+    finalBand: session.finalBand,
+  };
+
+  const chief = toPdfEvaluation(chiefEval, session.chiefExaminer);
+  const support = toPdfEvaluation(supportEval, session.supportExaminer);
+
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="result-sheet-${session._id}.pdf"`);
+
+  const doc = buildResultSheet({ session: pdfSession, chief, support });
+  doc.pipe(res);
 });
 
 async function assertExaminersValid(chiefId, supportId) {

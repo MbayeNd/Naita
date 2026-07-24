@@ -17,7 +17,7 @@ router.delete('/:id', authorize('admin', 'coordinator'), sessions.cancelSession)
 // Business Rule 4 — the coordinator (or an admin covering for one) starts the clock.
 router.post('/:id/start', authorize('admin', 'coordinator'), sessions.startSession);
 router.get('/:id/timer', sessions.getTimer);
-
+router.get('/:id/result-sheet.pdf', sessions.downloadResultSheet);
 // Marking sheets hang off the session.
 router.get('/:sessionId/my-evaluation', authorize('chief_examiner', 'support_examiner'), evaluations.getMyEvaluation);
 router.put(
