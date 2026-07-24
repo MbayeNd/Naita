@@ -1,0 +1,354 @@
+/* ==========================================================================
+   NAITA Project Evaluation — design tokens
+   The subject is an examination hall: two examiners scoring one apprentice
+   against a fixed rubric, on a clock. Everything below serves legibility
+   under time pressure. Marks, weights and the countdown are set in a mono
+   face so digits hold their column and can be read at a glance across a room.
+   ========================================================================== */
+:root {
+  --ink: #12202e;
+  --ink-2: #40525e;
+  --ink-3: #75858e;
+  --paper: #f2f4f1;
+  --surface: #ffffff;
+  --rule: #d9e0dc;
+  --rule-strong: #b9c5bf;
+
+  --seal: #0f6e5c;
+  --seal-wash: #e7f0ec;
+  --live: #b3402c;
+  --live-wash: #faede9;
+  --amber: #a8722a;
+  --amber-wash: #f7efe2;
+
+  --display: 'Archivo', system-ui, sans-serif;
+  --body: 'IBM Plex Sans', system-ui, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --s7: 48px;
+
+  --radius: 3px;
+  --shadow: 0 1px 2px rgba(18, 32, 46, 0.06), 0 8px 24px -16px rgba(18, 32, 46, 0.3);
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--display);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  margin: 0;
+  line-height: 1.2;
+}
+h1 { font-size: 1.6rem; }
+h2 { font-size: 1.15rem; }
+h3 { font-size: 1rem; }
+
+a { color: var(--seal); }
+
+/* An eyebrow labels the region you are in. It is the only all-caps device
+   in the interface, so it never competes with a heading. */
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.muted { color: var(--ink-2); }
+.small { font-size: 0.85rem; }
+
+/* --------------------------------------------------------------- shell -- */
+.shell { display: flex; min-height: 100%; }
+
+.rail {
+  width: 232px;
+  flex: 0 0 232px;
+  background: var(--ink);
+  color: #dfe6e3;
+  padding: var(--s5) var(--s4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s5);
+}
+.rail-mark { font-family: var(--display); font-size: 1.05rem; color: #fff; letter-spacing: -0.02em; }
+.rail-mark span { display: block; font-family: var(--mono); font-size: 0.65rem; letter-spacing: 0.16em; color: #7f9891; text-transform: uppercase; margin-top: 2px; }
+.rail nav { display: flex; flex-direction: column; gap: 2px; }
+.rail nav a {
+  color: #b9c8c3;
+  text-decoration: none;
+  padding: 7px var(--s3);
+  border-radius: var(--radius);
+  font-size: 0.92rem;
+}
+.rail nav a:hover { background: rgba(255, 255, 255, 0.07); color: #fff; }
+.rail nav a.active { background: var(--seal); color: #fff; }
+.rail-foot { margin-top: auto; border-top: 1px solid rgba(255,255,255,0.12); padding-top: var(--s4); }
+.rail-foot .who { color: #fff; font-size: 0.9rem; }
+.rail-foot .role { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: #7f9891; }
+
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.content { padding: var(--s6); max-width: 1120px; width: 100%; }
+.page-head { margin-bottom: var(--s5); }
+.page-head p { color: var(--ink-2); margin: var(--s2) 0 0; max-width: 62ch; }
+
+/* ------------------------------------------------------- signature: bar --
+   The live session bar. It only exists while a clock is running, and it
+   carries the two things an examiner needs mid-session: time left, and how
+   much of the sheet is still blank. */
+.live-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--ink);
+  color: #fff;
+  padding: var(--s4) var(--s6);
+  display: flex;
+  align-items: center;
+  gap: var(--s6);
+  flex-wrap: wrap;
+}
+.live-bar.is-ended { background: var(--live); }
+.live-clock {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 2.5rem;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+.live-bar.is-urgent .live-clock { color: #ffb4a4; }
+.live-meta { display: flex; flex-direction: column; gap: 2px; }
+.live-meta .eyebrow { color: rgba(255,255,255,0.55); }
+.live-meta strong { font-family: var(--display); font-weight: 600; }
+
+/* 10 ticks, one per criterion. Filled means scored. */
+.tick-strip { display: flex; gap: 3px; margin-left: auto; align-items: flex-end; }
+.tick {
+  width: 14px;
+  height: 26px;
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 1px;
+  transition: background 180ms ease, height 180ms ease;
+}
+.tick.filled { background: #6fd0b4; height: 34px; }
+.tick-label { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.1em; color: rgba(255,255,255,0.55); margin-left: var(--s3); align-self: center; }
+
+/* --------------------------------------------------------------- cards -- */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: var(--s5);
+}
+.card + .card { margin-top: var(--s4); }
+.card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--s4); margin-bottom: var(--s4); }
+
+.grid { display: grid; gap: var(--s4); }
+.grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+/* Session cards carry a status stripe rather than a coloured badge alone —
+   readable in a list scanned quickly. */
+.session-card { border-left: 3px solid var(--rule-strong); }
+.session-card.status-in_progress { border-left-color: var(--live); }
+.session-card.status-completed { border-left-color: var(--seal); }
+.session-card.status-cancelled { opacity: 0.6; }
+
+.stat { display: flex; flex-direction: column; gap: var(--s1); }
+.stat .value { font-family: var(--mono); font-size: 2rem; font-variant-numeric: tabular-nums; line-height: 1; }
+
+/* --------------------------------------------------------------- pills -- */
+.pill {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 2px;
+  background: var(--paper);
+  color: var(--ink-2);
+  border: 1px solid var(--rule);
+  white-space: nowrap;
+}
+.pill.seal { background: var(--seal-wash); color: var(--seal); border-color: #c4ddd4; }
+.pill.live { background: var(--live-wash); color: var(--live); border-color: #edc9bf; }
+.pill.amber { background: var(--amber-wash); color: var(--amber); border-color: #e4d0ae; }
+
+/* ------------------------------------------------------------- controls -- */
+.field { display: flex; flex-direction: column; gap: 5px; margin-bottom: var(--s4); }
+.field label { font-size: 0.85rem; font-weight: 500; color: var(--ink-2); }
+.field .hint { font-size: 0.8rem; color: var(--ink-3); }
+.field .error { font-size: 0.8rem; color: var(--live); }
+
+input, select, textarea {
+  font-family: inherit;
+  font-size: 0.95rem;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  width: 100%;
+}
+input[type='number'] { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+textarea { resize: vertical; min-height: 72px; }
+
+:focus-visible { outline: 2px solid var(--seal); outline-offset: 2px; }
+input:focus, select:focus, textarea:focus { border-color: var(--seal); outline: 2px solid var(--seal-wash); outline-offset: 0; }
+
+.btn {
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: #fff;
+  cursor: pointer;
+}
+.btn:hover:not(:disabled) { background: #1c2f42; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn.ghost { background: transparent; color: var(--ink); border-color: var(--rule-strong); }
+.btn.ghost:hover:not(:disabled) { background: var(--paper); }
+.btn.seal { background: var(--seal); border-color: var(--seal); }
+.btn.seal:hover:not(:disabled) { background: #0c5b4c; }
+.btn.danger { background: var(--live); border-color: var(--live); }
+.btn.small { padding: 5px 10px; font-size: 0.82rem; }
+.btn-row { display: flex; gap: var(--s3); flex-wrap: wrap; align-items: center; }
+
+/* --------------------------------------------------------- marking sheet --
+   One criterion per row. The weight sits in mono to the left of the title so
+   an examiner can see what each row is worth before they read it. */
+.criterion {
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: var(--s4) var(--s5);
+  margin-bottom: var(--s3);
+}
+.criterion.is-scored { border-left: 3px solid var(--seal); }
+.criterion-head { display: flex; gap: var(--s4); align-items: baseline; margin-bottom: var(--s3); }
+.criterion-index { font-family: var(--mono); font-size: 0.8rem; color: var(--ink-3); min-width: 22px; }
+.criterion-title { font-family: var(--display); font-weight: 600; font-size: 1rem; flex: 1; }
+.criterion-weight { font-family: var(--mono); font-size: 0.8rem; color: var(--ink-2); background: var(--paper); border: 1px solid var(--rule); padding: 2px 7px; border-radius: 2px; }
+
+.bands { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--s2); margin-bottom: var(--s3); }
+.band {
+  text-align: left;
+  font-family: inherit;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  padding: var(--s3);
+  cursor: pointer;
+  transition: border-color 140ms ease, background 140ms ease;
+}
+.band:hover { border-color: var(--rule-strong); }
+.band.selected { border-color: var(--seal); background: var(--seal-wash); }
+.band .band-name { font-weight: 600; font-size: 0.85rem; display: block; }
+.band .band-range { font-family: var(--mono); font-size: 0.72rem; color: var(--ink-3); display: block; margin-bottom: var(--s2); }
+.band .band-text { font-size: 0.78rem; color: var(--ink-2); line-height: 1.4; }
+
+.criterion-foot { display: flex; gap: var(--s4); align-items: flex-end; flex-wrap: wrap; }
+.criterion-foot .field { margin-bottom: 0; }
+.score-input { width: 96px; flex: 0 0 96px; }
+.comment-input { flex: 1; min-width: 220px; }
+
+/* Running total docks to the bottom of the viewport during marking. */
+.submit-dock {
+  position: sticky;
+  bottom: 0;
+  background: var(--surface);
+  border-top: 2px solid var(--ink);
+  padding: var(--s4) var(--s6);
+  margin: var(--s5) calc(var(--s6) * -1) 0;
+  display: flex;
+  align-items: center;
+  gap: var(--s5);
+  flex-wrap: wrap;
+}
+.running-total { font-family: var(--mono); font-size: 2rem; font-variant-numeric: tabular-nums; line-height: 1; }
+
+/* --------------------------------------------------------------- table -- */
+table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+th {
+  text-align: left;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  font-weight: 500;
+  padding: var(--s2) var(--s3);
+  border-bottom: 1px solid var(--rule-strong);
+}
+td { padding: var(--s3); border-bottom: 1px solid var(--rule); vertical-align: middle; }
+td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right; }
+tr:last-child td { border-bottom: none; }
+
+/* ------------------------------------------------------------ messages -- */
+.notice { border-radius: var(--radius); padding: var(--s3) var(--s4); font-size: 0.9rem; margin-bottom: var(--s4); border: 1px solid; }
+.notice.error { background: var(--live-wash); border-color: #edc9bf; color: #7d2c1d; }
+.notice.ok { background: var(--seal-wash); border-color: #c4ddd4; color: #0b503f; }
+.notice.warn { background: var(--amber-wash); border-color: #e4d0ae; color: #7a5219; }
+.notice ul { margin: var(--s2) 0 0; padding-left: 18px; }
+
+/* An empty screen states what will fill it and how. */
+.empty { text-align: center; padding: var(--s7) var(--s5); color: var(--ink-2); border: 1px dashed var(--rule-strong); border-radius: var(--radius); background: var(--surface); }
+.empty h3 { margin-bottom: var(--s2); }
+
+.loading { padding: var(--s6); color: var(--ink-3); font-family: var(--mono); font-size: 0.85rem; }
+
+/* --------------------------------------------------------------- login -- */
+.login-page { min-height: 100%; display: grid; grid-template-columns: 1fr 1fr; }
+.login-aside { background: var(--ink); color: #fff; padding: var(--s7) var(--s6); display: flex; flex-direction: column; justify-content: center; gap: var(--s4); }
+.login-aside h1 { font-size: 2.2rem; color: #fff; max-width: 14ch; }
+.login-aside p { color: #a8bdb6; max-width: 42ch; }
+.login-aside .eyebrow { color: #6fd0b4; }
+.login-form-wrap { display: flex; align-items: center; justify-content: center; padding: var(--s6); }
+.login-form { width: 100%; max-width: 380px; }
+
+/* --------------------------------------------------------- responsive -- */
+@media (max-width: 900px) {
+  .shell { flex-direction: column; }
+  .rail { width: 100%; flex: none; flex-direction: row; align-items: center; gap: var(--s4); flex-wrap: wrap; padding: var(--s3) var(--s4); }
+  .rail nav { flex-direction: row; flex-wrap: wrap; }
+  .rail-foot { margin-top: 0; border-top: none; padding-top: 0; margin-left: auto; }
+  .content { padding: var(--s4); }
+  .grid.cols-2, .grid.cols-3 { grid-template-columns: 1fr; }
+  .bands { grid-template-columns: 1fr; }
+  .live-bar { padding: var(--s3) var(--s4); gap: var(--s4); }
+  .live-clock { font-size: 1.9rem; }
+  .tick-strip { margin-left: 0; width: 100%; }
+  .submit-dock { margin-left: calc(var(--s4) * -1); margin-right: calc(var(--s4) * -1); padding: var(--s3) var(--s4); }
+  .login-page { grid-template-columns: 1fr; }
+  .login-aside { padding: var(--s6) var(--s4); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

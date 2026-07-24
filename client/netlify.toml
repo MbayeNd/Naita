@@ -1,0 +1,9 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# Single-page app: every path resolves to index.html so deep links work.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
