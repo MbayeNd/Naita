@@ -1,13 +1,13 @@
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api';
-const TOKEN_KEY = 'naita.token';
+
+let accessToken = null;
 
 export const tokenStore = {
-  get: () => localStorage.getItem(TOKEN_KEY),
-  set: (token) => localStorage.setItem(TOKEN_KEY, token),
-  clear: () => localStorage.removeItem(TOKEN_KEY),
+  get: () => accessToken,
+  set: (token) => { accessToken = token; },
+  clear: () => { accessToken = null; },
 };
 
-/** Thrown for any non-2xx response. `details` carries per-field messages. */
 export class ApiError extends Error {
   constructor(message, status, details) {
     super(message);
@@ -21,17 +21,15 @@ export function setUnauthorizedHandler(fn) {
   onUnauthorized = fn;
 }
 
-export async function request(path, { method = 'GET', body, signal } = {}) {
-  const token = tokenStore.get();
-
-  let response;
+async function rawRequest(path, { method = 'GET', body, signal } = {}) {
   try {
-    response = await fetch(`${BASE}${path}`, {
+    return await fetch(`${BASE}${path}`, {
       method,
       signal,
+      credentials: 'include',
       headers: {
         ...(body ? { 'Content-Type': 'application/json' } : {}),
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       },
       body: body ? JSON.stringify(body) : undefined,
     });
@@ -39,37 +37,62 @@ export async function request(path, { method = 'GET', body, signal } = {}) {
     if (error.name === 'AbortError') throw error;
     throw new ApiError('Cannot reach the server. Check your connection and try again.', 0);
   }
+}
 
+async function parseOrThrow(response) {
   if (response.status === 204) return null;
-
   const payload = await response.json().catch(() => ({}));
-
   if (!response.ok) {
-    if (response.status === 401) onUnauthorized();
-    throw new ApiError(
-      payload?.error?.message ?? 'Something went wrong.',
-      response.status,
-      payload?.error?.details
-    );
+    throw new ApiError(payload?.error?.message ?? 'Something went wrong.', response.status, payload?.error?.details);
   }
-
   return payload;
 }
 
-/**
- * Downloads a binary response (the result-sheet PDF). A plain `<a href>` can't
- * carry the Authorization header, so this fetches the file as a blob and
- * triggers the save from JS instead.
- */
-export async function downloadFile(path) {
-  const token = tokenStore.get();
-  let response;
+async function performRefresh() {
+  const run = async () => {
+    const response = await rawRequest('/auth/refresh', { method: 'POST' });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      accessToken = null;
+      return null;
+    }
+    accessToken = payload.token;
+    return payload;
+  };
+
+  if (typeof navigator !== 'undefined' && navigator.locks?.request) {
+    return navigator.locks.request('naita-refresh', run);
+  }
+  if (!performRefresh._inFlight) {
+    performRefresh._inFlight = run().finally(() => { performRefresh._inFlight = null; });
+  }
+  return performRefresh._inFlight;
+}
+
+const NO_RETRY_PATHS = new Set(['/auth/login', '/auth/refresh', '/auth/logout']);
+
+export async function request(path, options = {}) {
+  let response = await rawRequest(path, options);
+
+  if (response.status === 401 && !NO_RETRY_PATHS.has(path)) {
+    const refreshed = await performRefresh();
+    if (refreshed) response = await rawRequest(path, options);
+  }
+
   try {
-    response = await fetch(`${BASE}${path}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-  } catch {
-    throw new ApiError('Cannot reach the server. Check your connection and try again.', 0);
+    return await parseOrThrow(response);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) onUnauthorized();
+    throw error;
+  }
+}
+
+export async function downloadFile(path) {
+  let response = await rawRequest(path);
+
+  if (response.status === 401) {
+    const refreshed = await performRefresh();
+    if (refreshed) response = await rawRequest(path);
   }
 
   if (!response.ok) {
@@ -95,6 +118,12 @@ export async function downloadFile(path) {
 
 export const api = {
   login: (email, password) => request('/auth/login', { method: 'POST', body: { email, password } }),
+  refresh: async () => {
+    const result = await performRefresh();
+    if (!result) throw new ApiError('Sign in to continue.', 401);
+    return result;
+  },
+  logout: () => request('/auth/logout', { method: 'POST' }).finally(() => { accessToken = null; }),
   me: () => request('/auth/me'),
   updateProfile: (body) => request('/auth/me', { method: 'PATCH', body }),
   changePassword: (body) => request('/auth/me/password', { method: 'PATCH', body }),

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { api } from '../api/client.js';
+import { api, tokenStore } from '../api/client.js';
 import { useAuth, ROLE_LABELS } from '../context/AuthContext.jsx';
 import { Field, Notice } from '../components/ui.jsx';
 
@@ -37,13 +37,14 @@ export default function Profile() {
     }
     setPasswordState({ error: null, details: [], ok: null, busy: true });
     try {
-      await api.changePassword({
+      const result = await api.changePassword({
         currentPassword: passwords.currentPassword,
         newPassword: passwords.newPassword,
       });
+      if (result.token) tokenStore.set(result.token);
       setPasswords({ currentPassword: '', newPassword: '', confirm: '' });
       setUser({ ...user, mustChangePassword: false });
-      setPasswordState({ error: null, details: [], ok: 'Password updated.', busy: false });
+      setPasswordState({ error: null, details: [], ok: result.message ?? 'Password updated.', busy: false });
     } catch (error) {
       setPasswordState({ error: error.message, details: error.details, ok: null, busy: false });
     }

@@ -14,7 +14,11 @@ export const env = {
   nodeEnv: process.env.NODE_ENV ?? 'development',
   mongoUri: required('MONGODB_URI'),
   jwtSecret: required('JWT_SECRET'),
-  jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? '8h',
+  // Short-lived on purpose — the refresh token (httpOnly cookie) is what carries
+  // a session across hours, not this. ACCESS_TOKEN_EXPIRES_IN is the current name;
+  // JWT_EXPIRES_IN is honoured too so an existing deployment's env vars still work.
+  jwtExpiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN ?? process.env.JWT_EXPIRES_IN ?? '15m',
+  refreshTokenExpiresDays: Number(process.env.REFRESH_TOKEN_EXPIRES_DAYS ?? 30),
   clientOrigin: process.env.CLIENT_ORIGIN ?? 'http://localhost:5173',
   seedAdminEmail: process.env.SEED_ADMIN_EMAIL ?? 'admin@naita.lk',
   seedAdminPassword: process.env.SEED_ADMIN_PASSWORD ?? 'ChangeMe!2026',

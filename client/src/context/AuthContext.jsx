@@ -14,26 +14,31 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [status, setStatus] = useState('loading');
 
+  // Clears the UI immediately (no network wait) and revokes the session
+  // server-side in the background. Also used as the automatic handler when
+  // any request comes back 401 after a failed refresh — calling /auth/logout
+  // again in that case is harmless, since revoking an already-invalid
+  // session is a no-op on the server.
   const signOut = useCallback(() => {
     tokenStore.clear();
     setUser(null);
     setStatus('signed-out');
+    api.logout().catch(() => {});
   }, []);
 
   useEffect(() => {
     setUnauthorizedHandler(signOut);
   }, [signOut]);
 
-  // Restore the session on reload so a refresh mid-evaluation isn't a sign-out.
+  // There is nothing to check client-side anymore before attempting this —
+  // the access token doesn't survive a reload by design, and the httpOnly
+  // refresh cookie can't be read from JS to check it exists. So every load
+  // just asks the server: is there a valid session behind this cookie or not.
   useEffect(() => {
     let cancelled = false;
     async function restore() {
-      if (!tokenStore.get()) {
-        setStatus('signed-out');
-        return;
-      }
       try {
-        const { user: me } = await api.me();
+        const { user: me } = await api.refresh();
         if (!cancelled) {
           setUser(me);
           setStatus('signed-in');

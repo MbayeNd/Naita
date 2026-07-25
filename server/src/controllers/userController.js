@@ -4,7 +4,7 @@ import { EvaluationSession } from '../models/EvaluationSession.js';
 import { ApiError } from '../utils/ApiError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { recordAudit } from '../utils/audit.js';
-
+import { revokeAllSessionsForUser } from '../utils/session.js';
 const passwordRules = z
   .string()
   .min(10, 'Use at least 10 characters.')
@@ -103,6 +103,10 @@ export const updateUser = asyncHandler(async (req, res) => {
   Object.assign(user, req.body);
   await user.save();
 
+  if (req.body.isActive === false) {
+  await revokeAllSessionsForUser(user._id);
+  }
+
   await recordAudit({
     actor: req.user,
     action: 'user.updated',
@@ -122,6 +126,7 @@ export const resetPassword = asyncHandler(async (req, res) => {
   await user.setPassword(req.body.newPassword);
   user.mustChangePassword = true;
   await user.save();
+  await revokeAllSessionsForUser(user._id);
 
   await recordAudit({
     actor: req.user,

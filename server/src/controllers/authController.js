@@ -4,6 +4,14 @@ import { ApiError } from '../utils/ApiError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { signAccessToken } from '../utils/tokens.js';
 import { recordAudit } from '../utils/audit.js';
+import {
+  issueSession,
+  rotateSession,
+  revokeSession,
+  revokeAllSessionsForUser,
+  refreshCookieOptions,
+  REFRESH_COOKIE_NAME,
+} from '../utils/session.js';
 
 export const loginSchema = z.object({
   email: z.string().trim().toLowerCase().email('Enter a valid email address.'),
@@ -32,7 +40,6 @@ export const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
   const user = await User.findOne({ email }).select('+passwordHash');
 
-  // Same message for unknown email and wrong password: don't confirm which accounts exist.
   const invalid = ApiError.unauthorized('That email and password combination is not recognised.');
   if (!user) throw invalid;
 
@@ -43,7 +50,35 @@ export const login = asyncHandler(async (req, res) => {
   user.lastLoginAt = new Date();
   await user.save();
 
+  const rawRefreshToken = await issueSession(user, req);
+  res.cookie(REFRESH_COOKIE_NAME, rawRefreshToken, refreshCookieOptions());
+
   res.json({ token: signAccessToken(user), user: user.toPublic() });
+});
+
+export const refresh = asyncHandler(async (req, res) => {
+  const rawToken = req.cookies?.[REFRESH_COOKIE_NAME];
+  const result = await rotateSession(rawToken, req);
+
+  if (result.status !== 'ok') {
+    res.clearCookie(REFRESH_COOKIE_NAME, refreshCookieOptions());
+    const messages = {
+      missing: 'Sign in to continue.',
+      invalid: 'Your session has expired. Sign in again.',
+      expired: 'Your session has expired. Sign in again.',
+      reused: 'This session was signed out from another device for your protection. Sign in again.',
+    };
+    throw ApiError.unauthorized(messages[result.status] ?? messages.invalid);
+  }
+
+  res.cookie(REFRESH_COOKIE_NAME, result.rawToken, refreshCookieOptions());
+  res.json({ token: signAccessToken(result.user), user: result.user.toPublic() });
+});
+
+export const logout = asyncHandler(async (req, res) => {
+  await revokeSession(req.cookies?.[REFRESH_COOKIE_NAME]);
+  res.clearCookie(REFRESH_COOKIE_NAME, refreshCookieOptions());
+  res.json({ message: 'Signed out.' });
 });
 
 export const me = asyncHandler(async (req, res) => {
@@ -74,6 +109,10 @@ export const changePassword = asyncHandler(async (req, res) => {
   user.mustChangePassword = false;
   await user.save();
 
+  await revokeAllSessionsForUser(user._id);
+  const rawRefreshToken = await issueSession(user, req);
+  res.cookie(REFRESH_COOKIE_NAME, rawRefreshToken, refreshCookieOptions());
+
   await recordAudit({
     actor: user,
     action: 'password.changed',
@@ -82,5 +121,5 @@ export const changePassword = asyncHandler(async (req, res) => {
     summary: `${user.name} changed their own password`,
   });
 
-  res.json({ message: 'Password updated.' });
+  res.json({ message: 'Password updated. You have been signed out on any other device.', token: signAccessToken(user) });
 });

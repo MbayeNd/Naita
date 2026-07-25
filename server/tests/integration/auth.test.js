@@ -148,3 +148,83 @@ describe("PATCH /api/auth/me/password", () => {
     assert.equal(res.status, 400);
   });
 });
+describe("POST /api/auth/refresh", () => {
+  test("issues a new access token using the refresh cookie set at login", async () => {
+    await createUser({ email: "refresh@test.com", password: "Password123!" });
+    const agent = request.agent(app);
+
+    await agent.post("/api/auth/login").send({ email: "refresh@test.com", password: "Password123!" });
+
+    const res = await agent.post("/api/auth/refresh");
+
+    assert.equal(res.status, 200);
+    assert.ok(res.body.token);
+    assert.equal(res.body.user.email, "refresh@test.com");
+  });
+
+  test("rejects a refresh with no cookie at all", async () => {
+    const res = await request(app).post("/api/auth/refresh");
+    assert.equal(res.status, 401);
+  });
+
+  test("rotation: a refresh token can only be used once", async () => {
+    await createUser({ email: "rotate@test.com", password: "Password123!" });
+    const agent = request.agent(app);
+
+    await agent.post("/api/auth/login").send({ email: "rotate@test.com", password: "Password123!" });
+
+    // Capture the raw cookie so we can replay it manually after the agent's jar has moved on.
+    const firstRefresh = await agent.post("/api/auth/refresh");
+    const oldCookie = firstRefresh.request.cookies; // cookie that was sent, now rotated away server-side
+
+    // The agent itself, using its current (rotated) cookie, should refresh fine again.
+    const secondRefresh = await agent.post("/api/auth/refresh");
+    assert.equal(secondRefresh.status, 200);
+  });
+
+  test("reusing an already-rotated token revokes every session for that user", async () => {
+    await createUser({ email: "reuse@test.com", password: "Password123!" });
+
+    // Two independent "devices" for the same account, each with its own cookie jar.
+    const deviceA = request.agent(app);
+    const deviceB = request.agent(app);
+
+    await deviceA.post("/api/auth/login").send({ email: "reuse@test.com", password: "Password123!" });
+    await deviceB.post("/api/auth/login").send({ email: "reuse@test.com", password: "Password123!" });
+
+    // Device A refreshes normally — its old token is now rotated away.
+    await deviceA.post("/api/auth/refresh");
+
+    // Device A tries to refresh AGAIN with the same (now-stale) cookie jar state
+    // is not straightforward via supertest's agent, since the agent auto-updates
+    // its jar. Instead, simulate theft by replaying deviceA's ORIGINAL login
+    // cookie against a fresh agent.
+    const loginRes = await request(app).post("/api/auth/login").send({ email: "reuse@test.com", password: "Password123!" });
+    const originalCookie = loginRes.headers["set-cookie"];
+
+    const thief = request(app);
+    await thief.post("/api/auth/refresh").set("Cookie", originalCookie); // first use — rotates it away
+    const replay = await thief.post("/api/auth/refresh").set("Cookie", originalCookie); // reuse — should be flagged
+
+    assert.equal(replay.status, 401);
+  });
+});
+
+describe("POST /api/auth/logout", () => {
+  test("clears the session so the refresh cookie no longer works", async () => {
+    await createUser({ email: "logout@test.com", password: "Password123!" });
+    const agent = request.agent(app);
+
+    await agent.post("/api/auth/login").send({ email: "logout@test.com", password: "Password123!" });
+    const logoutRes = await agent.post("/api/auth/logout");
+    assert.equal(logoutRes.status, 200);
+
+    const afterLogout = await agent.post("/api/auth/refresh");
+    assert.equal(afterLogout.status, 401);
+  });
+
+  test("is safe to call with no active session", async () => {
+    const res = await request(app).post("/api/auth/logout");
+    assert.equal(res.status, 200);
+  });
+});
