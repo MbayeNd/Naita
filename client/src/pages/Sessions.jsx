@@ -37,6 +37,16 @@ export default function Sessions() {
     }
   }
 
+  async function cancel(id) {
+    if (!window.confirm('Cancel this session? This cannot be undone.')) return;
+    try {
+      await api.cancelSession(id);
+      await load();
+    } catch (error) {
+      setState((s) => ({ ...s, error: error.message }));
+    }
+  }
+
   return (
     <div className="content">
       <div className="page-head">
@@ -109,6 +119,11 @@ export default function Sessions() {
             {session.status === 'scheduled' ? (
               <button className="btn" onClick={() => start(session._id)} disabled={starting === session._id}>
                 {starting === session._id ? 'Starting…' : 'Start the clock'}
+              </button>
+            ) : null}
+            {session.status === 'scheduled' || session.status === 'in_progress' ? (
+              <button className="btn ghost" onClick={() => cancel(session._id)}>
+                Cancel session
               </button>
             ) : null}
             <Link className="btn ghost small" to={`/sessions/${session._id}`} style={{ textDecoration: 'none' }}>

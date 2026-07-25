@@ -18,6 +18,10 @@ export const env = {
   clientOrigin: process.env.CLIENT_ORIGIN ?? 'http://localhost:5173',
   seedAdminEmail: process.env.SEED_ADMIN_EMAIL ?? 'admin@naita.lk',
   seedAdminPassword: process.env.SEED_ADMIN_PASSWORD ?? 'ChangeMe!2026',
+  resendApiKey: process.env.RESEND_API_KEY ?? '',
+  emailFrom: process.env.EMAIL_FROM ?? 'onboarding@resend.dev',
 };
 
 export const isProd = env.nodeEnv === 'production';
+
+

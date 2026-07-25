@@ -167,14 +167,14 @@ time, so redeploy after changing it.
 
 Honest list, in rough priority order:
 
-1. **Automated tests.** No test suite. The scoring functions in
-   `utils/scoring.js` are pure and are the obvious first target.
-2. **PDF result sheets.** The SRS scope mentions result generation; results are
-   currently on screen only.
-3. **Email notification** when an examiner is assigned to a session.
-4. **Refresh tokens.** A single 8-hour access token means a long day of
+1. **Route-level integration tests.** Unit tests cover the pure logic; the
+   controllers themselves are only exercised by hand. Adding
+   `mongodb-memory-server` and a `supertest` pass over `app.js` would close
+   this.
+2. **Email notification** when an examiner is assigned to a session.
+3. **Refresh tokens.** A single 8-hour access token means a long day of
    evaluations may need a re-authentication.
-5. **Pagination.** List endpoints cap at 200–500 records, which is fine for one
+4. **Pagination.** List endpoints cap at 200–500 records, which is fine for one
    evaluation cycle and not for several years of history.
-6. **Rubric versioning UI.** Evaluations record the rubric version they were
+5. **Rubric versioning UI.** Evaluations record the rubric version they were
    scored under, but changing the rubric is still a code edit.

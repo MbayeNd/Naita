@@ -62,6 +62,17 @@ export default function People() {
     } finally { setBusy(false); }
   }
 
+  async function deleteUser(user) {
+    if (!window.confirm(`Delete ${user.name}? This cannot be undone.`)) return;
+    try {
+      const { message } = await api.deleteUser(user.id);
+      setState((s) => ({ ...s, ok: message, error: null }));
+      await load();
+    } catch (error) {
+      setState((s) => ({ ...s, error: error.message }));
+    }
+  }
+
   return (
     <div className="content">
       <div className="page-head">
@@ -127,6 +138,9 @@ export default function People() {
                       </button>
                       <button className="btn ghost small" onClick={() => { setResetFor(user.id); setNewPassword(''); }}>
                         Reset password
+                      </button>
+                      <button className="btn ghost small" onClick={() => deleteUser(user)}>
+                        Delete
                       </button>
                     </div>
                     {resetFor === user.id ? (

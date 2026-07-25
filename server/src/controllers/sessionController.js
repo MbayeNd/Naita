@@ -9,7 +9,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { recordAudit } from '../utils/audit.js';
 import { isExaminer } from '../middleware/authorize.js';
 import { buildResultSheet } from '../utils/resultSheet.js';
-
+import { sendExaminerAssignedEmail } from '../utils/email.js';
 const objectId = z.string().refine((v) => mongoose.isValidObjectId(v), 'Choose a valid option.');
 
 export const createSessionSchema = z.object({
@@ -20,6 +20,7 @@ export const createSessionSchema = z.object({
   scheduledAt: z.coerce.date(),
   durationMinutes: z.coerce.number().int().min(5, 'Minimum 5 minutes.').max(240, 'Maximum 240 minutes.'),
   notes: z.string().trim().max(1000).optional().or(z.literal('')),
+  
 });
 
 export const updateSessionSchema = createSessionSchema.partial().extend({
@@ -195,6 +196,8 @@ export const createSession = asyncHandler(async (req, res) => {
   ]);
 
   await session.populate(POPULATE);
+  await sendExaminerAssignedEmail({ examiner: session.chiefExaminer, session, apprentice: apprenticeDoc, role: 'chief' });
+  await sendExaminerAssignedEmail({ examiner: session.supportExaminer, session, apprentice: apprenticeDoc, role: 'support' });
   await recordAudit({
     actor: req.user,
     action: 'session.created',
@@ -248,6 +251,13 @@ export const updateSession = asyncHandler(async (req, res) => {
   }
 
   await session.populate(POPULATE);
+   if (chiefChanged) {
+    await sendExaminerAssignedEmail({ examiner: session.chiefExaminer, session, apprentice: session.apprentice, role: 'chief' });
+  }
+  if (supportChanged) {
+    await sendExaminerAssignedEmail({ examiner: session.supportExaminer, session, apprentice: session.apprentice, role: 'support' });
+  }
+
   res.json({ session: withTiming(session) });
 });
 

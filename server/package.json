@@ -25,6 +25,7 @@
     "mongoose": "^8.6.0",
     "morgan": "^1.10.0",
     "pdfkit": "^0.19.1",
+    "resend": "^6.18.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
