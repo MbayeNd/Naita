@@ -167,9 +167,7 @@ time, so redeploy after changing it.
 
 Honest list, in rough priority order:
 
-1. **Refresh tokens.** A single 8-hour access token means a long day of
-   evaluations may need a re-authentication.
-2. **Pagination.** List endpoints cap at 200–500 records, which is fine for one
+1. **Pagination.** List endpoints cap at 200–500 records, which is fine for one
    evaluation cycle and not for several years of history.
-3. **Rubric versioning UI.** Evaluations record the rubric version they were
+2. **Rubric versioning UI.** Evaluations record the rubric version they were
    scored under, but changing the rubric is still a code edit.
