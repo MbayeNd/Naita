@@ -8,6 +8,7 @@ import { env, isProd } from './config/env.js';
 import { connectDatabase } from './config/db.js';
 import cookieParser from 'cookie-parser';
 const app = express();
+app.set('etag', false);
 
 app.set('trust proxy', 1);
 app.use(helmet());
